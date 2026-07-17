@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Speech Practice — Prompt, Record, Review</title>
+<style>
+  :root{
+    --bg: #0f1420;
+    --bg-soft: #161d2e;
+    --card: #1c2438;
+    --border: #2a3348;
+    --text: #eef1f8;
+    --text-dim: #9aa4bc;
+    --accent: #5eead4;
+    --accent-dim: #2a5f57;
+    --warn: #f59e0b;
+    --danger: #f87171;
+    --radius: 16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    background: radial-gradient(circle at 20% -10%, #1e2a44 0%, var(--bg) 55%);
+    color:var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding: 32px 16px 80px;
+  }
+  header{
+    width:100%;
+    max-width:640px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  header h1{
+    font-size:1.15rem;
+    font-weight:600;
+    margin:0;
+    letter-spacing:0.2px;
+  }
+  header h1 span{color:var(--accent);}
+  nav{ display:flex; gap:8px; flex-wrap:wrap; }
+  nav button{
+    background:none;
+    border:1px solid var(--border);
+    color:var(--text-dim);
+    padding:8px 14px;
+    border-radius:999px;
+    font-size:0.85rem;
+    cursor:pointer;
+    transition: all .15s ease;
+  }
+  nav button:hover{ color:var(--text); border-color:var(--accent-dim); }
+  nav button.active{ color:var(--bg); background:var(--accent); border-color:var(--accent); }
+
+  main{ width:100%; max-width:640px; }
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:28px;
+    margin-bottom:20px;
+  }
+
+  .view{ display:none; }
+  .view.active{ display:block; }
+
+  /* Start view */
+  .prompt-box{
+    background:var(--bg-soft);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:24px;
+    text-align:center;
+    font-size:1.25rem;
+    line-height:1.5;
+    min-height:120px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin-bottom:20px;
+  }
+  .prompt-category{
+    display:block;
+    font-size:0.75rem;
+    text-transform:uppercase;
+    letter-spacing:1.5px;
+    color:var(--accent);
+    margin-bottom:10px;
+  }
+  .row{ display:flex; gap:12px; flex-wrap:wrap; }
+  .btn{
+    flex:1;
+    min-width:140px;
+    padding:14px 18px;
+    border-radius:12px;
+    border:1px solid var(--border);
+    background:var(--bg-soft);
+    color:var(--text);
+    font-size:0.95rem;
+    font-weight:600;
+    cursor:pointer;
+    transition: transform .1s ease, background .15s ease, border-color .15s ease;
+  }
+  .btn:hover{ transform: translateY(-1px); border-color:var(--accent-dim); }
+  .btn:active{ transform: translateY(0); }
+  .btn.primary{ background:var(--accent); color:#08221d; border-color:var(--accent); }
+  .btn.primary:hover{ background:#7ff0dd; }
+  .btn.danger{ background:transparent; color:var(--danger); border-color:#5a2a2a; }
+  .btn.danger:hover{ border-color:var(--danger); }
+  .btn:disabled{ opacity:0.4; cursor:not-allowed; transform:none; }
+
+  /* Recording view */
+  .timer{
+    font-size:4rem;
+    font-weight:700;
+    text-align:center;
+    font-variant-numeric: tabular-nums;
+    margin: 10px 0 4px;
+    letter-spacing: 1px;
+  }
+  .timer.warn{ color:var(--warn); }
+  .timer.danger{ color:var(--danger); }
+  .rec-indicator{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    color:var(--text-dim);
+    font-size:0.85rem;
+    margin-bottom:20px;
+  }
+  .dot{
+    width:10px; height:10px; border-radius:50%;
+    background:var(--danger);
+    animation: pulse 1.2s infinite ease-in-out;
+  }
+  @keyframes pulse{
+    0%,100%{ opacity:1; transform:scale(1); }
+    50%{ opacity:0.4; transform:scale(0.8); }
+  }
+  .progress-track{
+    width:100%; height:6px; border-radius:99px;
+    background:var(--bg-soft);
+    overflow:hidden;
+    margin-bottom:24px;
+  }
+  .progress-fill{
+    height:100%;
+    background:linear-gradient(90deg, var(--accent), #38bdf8);
+    width:0%;
+    transition: width 1s linear;
+  }
+  .rec-prompt{
+    text-align:center;
+    color:var(--text-dim);
+    font-size:0.95rem;
+    margin-bottom:24px;
+    min-height: 3em;
+  }
+
+  /* Review view */
+  audio{ width:100%; margin: 16px 0; }
+  .review-meta{ color:var(--text-dim); font-size:0.85rem; margin-bottom:6px; }
+
+  /* Library view */
+  .lib-item{
+    background:var(--bg-soft);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:16px 18px;
+    margin-bottom:12px;
+  }
+  .lib-item-top{
+    display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:8px;
+  }
+  .lib-prompt{ font-size:0.95rem; line-height:1.4; }
+  .lib-date{ color:var(--text-dim); font-size:0.75rem; white-space:nowrap; }
+  .lib-actions{ display:flex; gap:8px; margin-top:10px; }
+  .lib-actions .btn{ padding:8px 12px; font-size:0.8rem; min-width:auto; flex:none; }
+  .empty-state{ text-align:center; color:var(--text-dim); padding:40px 20px; }
+
+  .hint{ text-align:center; color:var(--text-dim); font-size:0.8rem; margin-top:14px; }
+
+  /* Shared activity view */
+  .who-badge{
+    display:inline-block;
+    background:var(--accent-dim);
+    color:var(--accent);
+    font-size:0.7rem;
+    font-weight:700;
+    padding:3px 9px;
+    border-radius:999px;
+    margin-right:8px;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+  }
+  .activity-item{
+    background:var(--bg-soft);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:14px 18px;
+    margin-bottom:10px;
+  }
+  .activity-item audio{ margin: 10px 0 0; }
+  .activity-top{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px;}
+  .upload-status{
+    text-align:center; color:var(--text-dim); font-size:0.85rem; margin-top:10px; min-height:1.2em;
+  }
+  .name-modal-backdrop{
+    position:fixed; inset:0; background:rgba(0,0,0,0.6);
+    display:flex; align-items:center; justify-content:center;
+    z-index:50; padding:16px;
+  }
+  .name-modal{
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+    padding:28px; max-width:360px; width:100%;
+  }
+  .name-modal input{
+    width:100%; padding:12px 14px; border-radius:10px; border:1px solid var(--border);
+    background:var(--bg-soft); color:var(--text); font-size:1rem; margin:14px 0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span>&#9679;</span> Speech Practice</h1>
+  <nav>
+    <button id="navHome" class="active">Practice</button>
+    <button id="navLibrary">Review (<span id="libCount">0</span>)</button>
+    <button id="navActivity">Shared Activity</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- START VIEW -->
+  <section id="viewStart" class="view active">
+    <div class="card">
+      <span class="prompt-category" id="promptCategory">Impromptu Speaking</span>
+      <div class="prompt-box" id="promptText">Press "New Prompt" to get a topic.</div>
+      <div class="row">
+        <button class="btn" id="btnNewPrompt">New Prompt</button>
+        <button class="btn primary" id="btnStart">Start 2-Min Recording</button>
+      </div>
+      <p class="hint" id="micHint"></p>
+    </div>
+  </section>
+
+  <!-- RECORDING VIEW -->
+  <section id="viewRecording" class="view">
+    <div class="card">
+      <div class="rec-indicator"><span class="dot"></span> Recording</div>
+      <div class="timer" id="timerDisplay">2:00</div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="rec-prompt" id="recPromptText"></div>
+      <div class="row">
+        <button class="btn danger" id="btnStop">Stop &amp; Review</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- REVIEW VIEW -->
+  <section id="viewReview" class="view">
+    <div class="card">
+      <div class="review-meta">Prompt</div>
+      <div class="prompt-box" id="reviewPromptText" style="font-size:1rem; text-align:left; justify-content:flex-start;"></div>
+      <div class="review-meta">Your recording</div>
+      <audio id="reviewAudio" controls></audio>
+      <div class="row">
+        <button class="btn danger" id="btnDiscard">Discard</button>
+        <button class="btn primary" id="btnSave">Save &amp; Share</button>
+      </div>
+      <div class="upload-status" id="uploadStatus"></div>
+      <p class="hint">Saving keeps a copy in this browser AND shares the audio to Shared Activity, so everyone using this link can listen to it.</p>
+    </div>
+  </section>
+
+  <!-- LIBRARY VIEW -->
+  <section id="viewLibrary" class="view">
+    <div class="card">
+      <h2 style="margin-top:0; font-size:1rem; color:var(--text-dim); font-weight:600;">Saved Recordings (this device only)</h2>
+      <div id="libraryList"></div>
+    </div>
+  </section>
+
+  <!-- SHARED ACTIVITY VIEW -->
+  <section id="viewActivity" class="view">
+    <div class="card">
+      <h2 style="margin-top:0; font-size:1rem; color:var(--text-dim); font-weight:600;">Shared Activity</h2>
+      <p class="hint" style="margin-top:0; margin-bottom:16px;">Everyone using this same link shows up here. Tap play to hear their speech.</p>
+      <div id="activityList">Loading...</div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Name prompt modal -->
+<div class="name-modal-backdrop" id="nameModal" style="display:none;">
+  <div class="name-modal">
+    <h2 style="margin:0; font-size:1.05rem;">What's your name?</h2>
+    <p class="hint" style="margin:6px 0 0; text-align:left;">Shown next to your entries in Shared Activity, so others know it's you.</p>
+    <input type="text" id="nameInput" placeholder="e.g. Tia" maxlength="30" />
+    <button class="btn primary" id="btnSaveName" style="width:100%;">Save</button>
+  </div>
+</div>
+
+<!-- Supabase (via CDN) -->
+<script type="module">
+  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+  // ====== PASTE YOUR VALUES HERE ======
+  const SUPABASE_URL = "https://msfhzgrxftaignumxsom.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_p5Z7TXDujJzUya-US7QFWQ_cCzuFMUm";
+  // ====================================
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const BUCKET = "recordings";
+
+  function extFromMime(mime){
+    if (!mime) return "webm";
+    if (mime.includes("mp4")) return "m4a";
+    if (mime.includes("ogg")) return "ogg";
+    return "webm";
+  }
+
+  // Bridge so the main (non-module) app script can use Supabase.
+  window.__speechShared = {
+    // Uploads the audio blob to Storage, then records the entry in the database.
+    async postEntry({ name, prompt, category, durationSecs, blob, mime }) {
+      const path = Date.now() + "-" + crypto.randomUUID() + "." + extFromMime(mime);
+
+      const { error: upErr } = await supabase.storage
+        .from(BUCKET)
+        .upload(path, blob, { contentType: mime || "audio/webm" });
+      if (upErr) throw upErr;
+
+      const { error: dbErr } = await supabase.from("recordings").insert({
+        name: name || "Anonymous",
+        prompt: prompt,
+        category: category || null,
+        duration_secs: durationSecs || null,
+        audio_path: path
+      });
+      if (dbErr) throw dbErr;
+    },
+
+    // Fetches the latest entries and hands them to the callback,
+    // then keeps listening for new ones in real time (if enabled).
+    listenEntries(callback) {
+      const load = async () => {
+        const { data, error } = await supabase
+          .from("recordings")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(100);
+        if (error) { console.warn("Could not load shared activity:", error); return; }
+        const items = data.map(row => {
+          const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(row.audio_path);
+          return {
+            name: row.name,
+            prompt: row.prompt,
+            category: row.category,
+            durationSecs: row.duration_secs,
+            createdAtMs: row.created_at ? new Date(row.created_at).getTime() : null,
+            audioUrl: pub ? pub.publicUrl : null
+          };
+        });
+        callback(items);
+      };
+
+      load();
+
+      // Live updates when someone else posts (works if Realtime is enabled;
+      // harmless if not — the refresh() fallback below still covers it).
+      try {
+        supabase.channel("recordings-feed")
+          .on("postgres_changes",
+              { event: "INSERT", schema: "public", table: "recordings" },
+              load)
+          .subscribe();
+      } catch (e) { /* realtime unavailable — fine */ }
+
+      // Expose a manual refresh (called when the tab is opened).
+      window.__speechShared.refresh = load;
+    }
+  };
+
+  // Signal readiness in case the main script loads first.
+  window.dispatchEvent(new Event("speechSharedReady"));
+</script>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Name handling ----------
+  const NAME_KEY = "speechPracticeUserName";
+  function getUserName(){ return localStorage.getItem(NAME_KEY) || ""; }
+  function setUserName(n){ localStorage.setItem(NAME_KEY, n); }
+
+  function ensureName(){
+    if (getUserName()) return;
+    document.getElementById("nameModal").style.display = "flex";
+  }
+  document.getElementById("btnSaveName").addEventListener("click", () => {
+    const val = document.getElementById("nameInput").value.trim();
+    if (!val) return;
+    setUserName(val);
+    document.getElementById("nameModal").style.display = "none";
+  });
+
+  // ---------- Prompts ----------
+  const PROMPTS = [
+    { cat: "Impromptu Speaking", text: "Describe a moment when you changed your mind about something important. What led to the shift?" },
+    { cat: "Impromptu Speaking", text: "If you could give one piece of advice to your younger self, what would it be and why?" },
+    { cat: "Impromptu Speaking", text: "Talk about a skill you wish more people took seriously." },
+    { cat: "Storytelling", text: "Tell a short story about a time you got something completely wrong — and what happened next." },
+    { cat: "Storytelling", text: "Describe the best (or worst) trip you've ever taken, focusing on one specific moment." },
+    { cat: "Persuasive", text: "Convince someone to try something they've always been hesitant about." },
+    { cat: "Persuasive", text: "Argue for or against: 'Failure is the best teacher.'" },
+    { cat: "Interview Practice", text: "Tell me about a time you disagreed with a decision at work or school. How did you handle it?" },
+    { cat: "Interview Practice", text: "What's a weakness you're actively working to improve, and how?" },
+    { cat: "Interview Practice", text: "Describe a project you're proud of and the obstacle that almost derailed it." },
+    { cat: "Explaining Concepts", text: "Explain a topic you know well to someone with zero background in it." },
+    { cat: "Explaining Concepts", text: "Describe how something ordinary (like a fridge or the internet) actually works." },
+    { cat: "Reflective", text: "What does 'success' mean to you right now, and how has that definition changed over time?" },
+    { cat: "Reflective", text: "Talk about a person who influenced how you think, and how." },
+    { cat: "Debate / Opinion", text: "Should everyone be required to learn public speaking in school? Make your case." },
+    { cat: "Debate / Opinion", text: "Is it better to be a generalist or a specialist in your career? Defend a side." }
+  ];
+
+  let currentPrompt = null;
+
+  function pickPrompt(){
+    const p = PROMPTS[Math.floor(Math.random() * PROMPTS.length)];
+    currentPrompt = p;
+    document.getElementById("promptCategory").textContent = p.cat;
+    document.getElementById("promptText").textContent = p.text;
+    document.getElementById("btnStart").disabled = false;
+  }
+
+  // ---------- View switching ----------
+  const views = {
+    start: document.getElementById("viewStart"),
+    recording: document.getElementById("viewRecording"),
+    review: document.getElementById("viewReview"),
+    library: document.getElementById("viewLibrary"),
+    activity: document.getElementById("viewActivity"),
+  };
+  function showView(name){
+    Object.values(views).forEach(v => v.classList.remove("active"));
+    views[name].classList.add("active");
+    document.getElementById("navHome").classList.toggle("active", name === "start" || name === "recording" || name === "review");
+    document.getElementById("navLibrary").classList.toggle("active", name === "library");
+    document.getElementById("navActivity").classList.toggle("active", name === "activity");
+  }
+
+  document.getElementById("navHome").addEventListener("click", () => showView("start"));
+  document.getElementById("navLibrary").addEventListener("click", () => { renderLibrary(); showView("library"); });
+  document.getElementById("navActivity").addEventListener("click", () => {
+    showView("activity");
+    if (window.__speechShared && window.__speechShared.refresh) window.__speechShared.refresh();
+  });
+
+  // ---------- Recording ----------
+  const DURATION = 120; // seconds
+  let mediaRecorder = null;
+  let chunks = [];
+  let stream = null;
+  let timeLeft = DURATION;
+  let timerInterval = null;
+  let lastBlob = null;
+  let lastMime = "audio/webm";
+  let lastDurationSecs = 0;
+
+  function pickMimeType(){
+    const candidates = [
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/mp4",
+      "audio/ogg;codecs=opus"
+    ];
+    for (const c of candidates){
+      if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) return c;
+    }
+    return "";
+  }
+
+  async function startRecording(){
+    ensureName();
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      document.getElementById("micHint").textContent = "Microphone access isn't supported in this browser.";
+      return;
+    }
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    }catch(err){
+      document.getElementById("micHint").textContent = "Microphone permission was denied or unavailable.";
+      return;
+    }
+
+    lastMime = pickMimeType();
+    chunks = [];
+    mediaRecorder = lastMime ? new MediaRecorder(stream, { mimeType: lastMime }) : new MediaRecorder(stream);
+    mediaRecorder.addEventListener("dataavailable", e => { if (e.data && e.data.size > 0) chunks.push(e.data); });
+    mediaRecorder.addEventListener("stop", onRecordingStopped);
+    mediaRecorder.start();
+
+    timeLeft = DURATION;
+    document.getElementById("recPromptText").textContent = currentPrompt.text;
+    updateTimerDisplay();
+    document.getElementById("progressFill").style.width = "0%";
+    showView("recording");
+
+    timerInterval = setInterval(() => {
+      timeLeft -= 1;
+      updateTimerDisplay();
+      if (timeLeft <= 0){
+        stopRecording();
+      }
+    }, 1000);
+  }
+
+  function updateTimerDisplay(){
+    const m = Math.floor(Math.max(timeLeft,0) / 60);
+    const s = Math.max(timeLeft,0) % 60;
+    const el = document.getElementById("timerDisplay");
+    el.textContent = m + ":" + String(s).padStart(2, "0");
+    el.classList.toggle("warn", timeLeft <= 30 && timeLeft > 10);
+    el.classList.toggle("danger", timeLeft <= 10);
+    document.getElementById("progressFill").style.width = (((DURATION - Math.max(timeLeft,0)) / DURATION) * 100) + "%";
+  }
+
+  function stopRecording(){
+    clearInterval(timerInterval);
+    timerInterval = null;
+    lastDurationSecs = Math.min(DURATION, Math.max(0, DURATION - timeLeft));
+    if (mediaRecorder && mediaRecorder.state !== "inactive"){
+      mediaRecorder.stop();
+    }
+    if (stream){
+      stream.getTracks().forEach(t => t.stop());
+    }
+  }
+
+  function onRecordingStopped(){
+    lastBlob = new Blob(chunks, { type: lastMime || "audio/webm" });
+    const url = URL.createObjectURL(lastBlob);
+    document.getElementById("reviewAudio").src = url;
+    document.getElementById("reviewPromptText").textContent = currentPrompt.text;
+    document.getElementById("uploadStatus").textContent = "";
+    showView("review");
+  }
+
+  document.getElementById("btnNewPrompt").addEventListener("click", pickPrompt);
+  document.getElementById("btnStart").addEventListener("click", startRecording);
+  document.getElementById("btnStop").addEventListener("click", stopRecording);
+
+  document.getElementById("btnDiscard").addEventListener("click", () => {
+    lastBlob = null;
+    showView("start");
+  });
+
+  // ---------- Storage (IndexedDB) ----------
+  const DB_NAME = "speechPracticeDB";
+  const STORE_NAME = "recordings";
+  let dbPromise = null;
+
+  function getDB(){
+    if (dbPromise) return dbPromise;
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)){
+          db.createObjectStore(STORE_NAME, { keyPath: "id" });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return dbPromise;
+  }
+
+  async function saveRecording(entry){
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      tx.objectStore(STORE_NAME).put(entry);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function getAllRecordings(){
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const req = tx.objectStore(STORE_NAME).getAll();
+      req.onsuccess = () => resolve(req.result.sort((a,b) => b.date - a.date));
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function deleteRecording(id){
+    const db = await getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      tx.objectStore(STORE_NAME).delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function updateLibCount(){
+    const all = await getAllRecordings();
+    document.getElementById("libCount").textContent = all.length;
+  }
+
+  document.getElementById("btnSave").addEventListener("click", async () => {
+    if (!lastBlob) return;
+    const saveBtn = document.getElementById("btnSave");
+    const statusEl = document.getElementById("uploadStatus");
+    saveBtn.disabled = true;
+    statusEl.textContent = "Saving...";
+
+    const id = "rec_" + Date.now();
+    const entry = {
+      id,
+      prompt: currentPrompt.text,
+      category: currentPrompt.cat,
+      date: Date.now(),
+      mime: lastMime || "audio/webm",
+      blob: lastBlob
+    };
+    await saveRecording(entry);
+    await updateLibCount();
+
+    // Upload audio + entry to shared activity feed (Supabase)
+    let shared = false;
+    try{
+      if (window.__speechShared){
+        statusEl.textContent = "Uploading to Shared Activity...";
+        await window.__speechShared.postEntry({
+          name: getUserName() || "Anonymous",
+          prompt: currentPrompt.text,
+          category: currentPrompt.cat,
+          durationSecs: lastDurationSecs,
+          blob: lastBlob,
+          mime: lastMime || "audio/webm"
+        });
+        shared = true;
+      }
+    }catch(err){
+      console.warn("Could not post to shared activity:", err);
+    }
+
+    statusEl.textContent = shared ? "" : "Saved locally, but sharing failed — check your connection and try again later.";
+    saveBtn.disabled = false;
+    lastBlob = null;
+    renderLibrary();
+    showView("library");
+  });
+
+  function extFromMime(mime){
+    if (mime.includes("mp4")) return "m4a";
+    if (mime.includes("ogg")) return "ogg";
+    return "webm";
+  }
+
+  function formatDate(ts){
+    const d = new Date(ts);
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " · " +
+           d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+
+  function escapeHtml(s){
+    return String(s == null ? "" : s)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  async function renderLibrary(){
+    const list = document.getElementById("libraryList");
+    const all = await getAllRecordings();
+    document.getElementById("libCount").textContent = all.length;
+
+    if (all.length === 0){
+      list.innerHTML = '<div class="empty-state">No saved recordings yet.<br>Finish a practice session and hit "Save" to build your review library.</div>';
+      return;
+    }
+
+    list.innerHTML = "";
+    all.forEach(entry => {
+      const url = URL.createObjectURL(entry.blob);
+      const item = document.createElement("div");
+      item.className = "lib-item";
+      item.innerHTML = `
+        <div class="lib-item-top">
+          <div>
+            <span class="prompt-category" style="margin-bottom:4px;">${escapeHtml(entry.category)}</span>
+            <div class="lib-prompt">${escapeHtml(entry.prompt)}</div>
+          </div>
+          <div class="lib-date">${formatDate(entry.date)}</div>
+        </div>
+        <audio controls src="${url}"></audio>
+        <div class="lib-actions">
+          <button class="btn" data-action="download">Download</button>
+          <button class="btn danger" data-action="delete">Delete</button>
+        </div>
+      `;
+      item.querySelector('[data-action="download"]').addEventListener("click", () => {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `speech-practice-${entry.date}.${extFromMime(entry.mime)}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      });
+      item.querySelector('[data-action="delete"]').addEventListener("click", async () => {
+        await deleteRecording(entry.id);
+        renderLibrary();
+      });
+      list.appendChild(item);
+    });
+  }
+
+  // ---------- Shared activity rendering ----------
+  function renderActivity(items){
+    const list = document.getElementById("activityList");
+    if (!items || items.length === 0){
+      list.innerHTML = '<div class="empty-state">No shared activity yet. Once someone saves a practice session, it\'ll show up here with playable audio.</div>';
+      return;
+    }
+    list.innerHTML = "";
+    items.forEach(entry => {
+      const item = document.createElement("div");
+      item.className = "activity-item";
+      const when = entry.createdAtMs ? formatDate(entry.createdAtMs) : "";
+      const durText = entry.durationSecs
+        ? " · " + Math.floor(entry.durationSecs / 60) + ":" + String(entry.durationSecs % 60).padStart(2, "0")
+        : "";
+      const audioHtml = entry.audioUrl
+        ? `<audio controls preload="none" src="${escapeHtml(entry.audioUrl)}"></audio>`
+        : "";
+      item.innerHTML = `
+        <div class="activity-top">
+          <div><span class="who-badge">${escapeHtml(entry.name || "Anonymous")}</span><span class="prompt-category" style="display:inline; text-transform:none; letter-spacing:0; color:var(--text-dim);">${escapeHtml(entry.category || "")}${durText}</span></div>
+          <div class="lib-date">${when}</div>
+        </div>
+        <div class="lib-prompt">${escapeHtml(entry.prompt || "")}</div>
+        ${audioHtml}
+      `;
+      list.appendChild(item);
+    });
+  }
+
+  function wireSharedListener(){
+    if (window.__speechShared){
+      window.__speechShared.listenEntries(renderActivity);
+    } else {
+      window.addEventListener("speechSharedReady", () => {
+        window.__speechShared.listenEntries(renderActivity);
+      }, { once: true });
+    }
+  }
+
+  // ---------- Init ----------
+  pickPrompt();
+  updateLibCount();
+  wireSharedListener();
+})();
+</script>
+
+</body>
+</html>
